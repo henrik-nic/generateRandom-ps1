@@ -1,0 +1,116 @@
+# Function to save PDF using Word
+function Save-ContractAsPdf {
+    param (
+        [string]$Content,
+        [string]$PdfPath,
+        [object]$WordApp
+    )
+
+    $doc = $WordApp.Documents.Add()
+    $range = $doc.Range()
+    $range.Text = $Content
+
+    $doc.SaveAs([ref]$PdfPath, [ref]17)  # 17 = wdFormatPDF
+    $doc.Close($false)
+}
+
+# Input CSV
+$csvPath = "\path\to\your\employees.csv"
+
+# Output folder
+$outputFolder = "\path\to\output\folder"
+New-Item -ItemType Directory -Path $outputFolder -Force | Out-Null
+
+# Import CSV
+$employees = Import-Csv -Path $csvPath -Encoding UTF8 | Select-Object -First 1000
+
+# If you want to process a specific range of employees, uncomment the next line
+#$employees = Import-Csv -Path $csvPath -Encoding UTF8 | Select-Object -Skip 1000 -First 1000
+
+
+# Payslip Template
+$payslipTemplate = @"
+------------------------------------------------------------------------------
+LÖNESPECIFIKATION
+------------------------------------------------------------------------------
+Namn: {Name}
+Personnummer: {SSN}
+Telefon: {Phone}
+Mail: {Mail}
+Anställningsnummer: {EmployeeID}
+Period: {PayslipDate}
+
+------------------------------------------------------------------------------
+LÖNEUPPGIFTER
+------------------------------------------------------------------------------
+
+Bruttolön: {Bruttolon} SEK
+Skatt (30%): {Skatt} SEK
+Arbetsgivaravgifter (31.42%): {Arbetsgivaravgifter} SEK
+Nettolön: {Nettolon} SEK
+
+Utbetalningsdatum: 25e varje månad
+
+------------------------------------------------------------------------------
+Tack för att du är en del av vårt team!
+"@
+
+# Start Word
+$wordApp = New-Object -ComObject Word.Application
+$wordApp.Visible = $false
+
+# Loop and generate payslips
+$counter = 1
+
+foreach ($emp in $employees) {
+    $anstallningsnummer = $counter
+    $counter++
+
+    # Read bruttolön from CSV and calculate rest
+    $bruttolon = [double]$emp.'Lön_SEK_per_månad'
+    $skatt = $bruttolon * 0.30
+    $arbetsgivaravgifter = $bruttolon * 0.3142
+    $nettolon = $bruttolon - $skatt
+
+    # Format
+    $bruttolonFormatted = "{0:N2}" -f $bruttolon
+    $skattFormatted = "{0:N2}" -f $skatt
+    $arbetsgivaravgifterFormatted = "{0:N2}" -f $arbetsgivaravgifter
+    $nettolonFormatted = "{0:N2}" -f $nettolon
+
+    $payslipDate = (Get-Date).AddDays((Get-Random -Minimum 0 -Maximum 30)).ToString("yyyy-MM-dd")
+
+    # Fill template
+    $payslip = $payslipTemplate `
+        -replace '{Name}', $emp.Namn `
+        -replace '{SSN}', $emp.Personnummer `
+        -replace '{Phone}', $emp.Telefon `
+        -replace '{Mail}', $emp.Mail `
+        -replace '{EmployeeID}', $anstallningsnummer `
+        -replace '{PayslipDate}', $payslipDate `
+        -replace '{Bruttolon}', $bruttolonFormatted `
+        -replace '{Skatt}', $skattFormatted `
+        -replace '{Arbetsgivaravgifter}', $arbetsgivaravgifterFormatted `
+        -replace '{Nettolon}', $nettolonFormatted
+
+    # Clean filename
+    $safeName = ($emp.Namn -replace '[\\\/:\*\?"<>\|]', '') -replace '\s+', '_'
+    $pdfPath = Join-Path $outputFolder ("Lönespecifikation_${safeName}_$anstallningsnummer.pdf")
+    $txtPath = Join-Path $outputFolder ("Lönespecifikation_${safeName}_$anstallningsnummer.txt")
+
+    # Save as PDF
+    Save-ContractAsPdf -Content $payslip -PdfPath $pdfPath -WordApp $wordApp
+
+    # Save as TXT
+    $payslip | Out-File -FilePath $txtPath -Encoding UTF8
+
+    Write-Host "✅ Lönespecifikation skapad för $($emp.Namn)"
+}
+
+# Cleanup
+$wordApp.Quit()
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($wordApp) | Out-Null
+[GC]::Collect()
+[GC]::WaitForPendingFinalizers()
+
+Write-Host "✅ Alla filer (PDF & TXT) skapade i: $outputFolder"

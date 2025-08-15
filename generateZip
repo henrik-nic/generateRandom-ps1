@@ -1,0 +1,30 @@
+# Output folder for generated files
+$outputFolder = "\path\to\your\output\folder"
+New-Item -ItemType Directory -Path $outputFolder -Force | Out-Null
+
+# Number of files to generate
+$fileCount = 5
+
+# Generate sample text files
+for ($i = 1; $i -le $fileCount; $i++) {
+    $filePath = Join-Path $outputFolder "Document_$i.txt"
+    $content = @"
+This is sample document number $i.
+Generated on: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+"@
+    $content | Out-File -FilePath $filePath -Encoding UTF8
+    Write-Host "Created file: $filePath"
+}
+
+# Path for ZIP file
+$zipFilePath = "\path\to\your\output\folder\documents.zip"
+
+# If ZIP exists, remove it
+if (Test-Path $zipFilePath) {
+    Remove-Item $zipFilePath -Force
+}
+
+# Compress the folder into a ZIP archive
+Compress-Archive -Path $outputFolder\* -DestinationPath $zipFilePath
+
+Write-Host "✅ Created ZIP archive: $zipFilePath"

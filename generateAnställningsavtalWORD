@@ -1,0 +1,95 @@
+function Save-ContractAsWord {
+    param (
+        [string]$Content,
+        [string]$DocxPath,
+        [object]$WordApp
+    )
+
+    $doc = $WordApp.Documents.Add()
+    $range = $doc.Range()
+    $range.Text = $Content
+
+    # 16 = wdFormatDocumentDefault (i.e., Word .docx)
+    $doc.SaveAs([ref]$DocxPath, [ref]16)
+    $doc.Close($false)
+}
+
+# CSV file path
+$csvPath = "Path\to\your\file"
+
+# Output folder for Word documents
+$outputFolder = "Path\to\output\"
+New-Item -ItemType Directory -Path $outputFolder -Force | Out-Null
+
+# Import CSV
+$employees = Import-Csv -Path $csvPath -Encoding UTF8 | Select-Object -First 2300
+
+# Contract template
+$contractTemplate = @"
+ANSTÄLLNINGSAVTAL
+Mellan:
+Företaget AB
+Org.nr: 556000-0000
+Adress: Företagsgatan 1, 111 22 Stockholm
+
+Namn: {Name}
+Personnummer: {SSN}
+Telefon: {Phone}
+Gatuadress: {StreetName}
+Gatunummer: {StreetNumber}
+Postnummer: {Postnummer}
+Mail: {Mail}
+
+Anställningsnummer: {EmployeeID}
+Anställningsform: Tillsvidareanställning
+Tillträdesdag: {StartDate}
+Lön: 32 000 SEK/månad
+Arbetsort: {City}
+Arbetstid: Heltid (40h/vecka)
+
+Ort och datum: Stockholm, {ContractDate}
+
+__________________________
+Företaget AB
+
+__________________________
+{Name}
+"@
+
+# Start Word once
+$wordApp = New-Object -ComObject Word.Application
+$wordApp.Visible = $false
+
+# Counter for generating anställningsnummer
+$counter = 2000
+
+foreach ($emp in $employees) {
+    $anstallningsnummer = $counter
+    $counter++
+
+    $city = ($emp.Adress -split '\s+')[-1]
+
+    $contract = $contractTemplate `
+        -replace '{Name}', $emp.Namn `
+        -replace '{SSN}', $emp.SSN `
+        -replace '{Phone}', $emp.Telefon `
+        -replace '{StreetName}', $emp.StreetName `
+        -replace '{StreetNumber}', $emp.StreetNumber `
+        -replace '{Postnummer}', $emp.Postnummer `
+        -replace '{Mail}', $emp.Mail `
+        -replace '{EmployeeID}', $anstallningsnummer `
+        -replace '{StartDate}', (Get-Date).AddDays((get-random -Minimum -1000 -Maximum 180)  ).ToString("yyyy-MM-dd") `
+        -replace '{ContractDate}', (Get-Date -Format "yyyy-MM-dd") `
+        -replace '{City}', $city
+
+    # Clean filename
+    $safeName = ($emp.Namn -replace '[\\\/:\*\?"<>\|]', '') -replace '\s+', '_'
+    $docxPath = Join-Path $outputFolder ("Anstallningsavtal_${safeName}_$anstallningsnummer.docx")
+
+    Save-ContractAsWord -Content $contract -DocxPath $docxPath -WordApp $wordApp
+
+    Write-Host "Generated Word document for $($emp.Namn), anställningsnummer: $anstallningsnummer"
+}
+
+# Quit Word
+$wordApp.Quit()

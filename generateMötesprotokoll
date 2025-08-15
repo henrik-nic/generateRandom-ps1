@@ -1,0 +1,86 @@
+# Define file paths safely
+$csvPath = "\path\to\your\csv\file.csv"  # Adjust this path to your CSV file location
+$outputFolder = "\path\to\output\folder"  # Adjust this path to your desired output folder
+
+# Ensure the output directory exists
+New-Item -ItemType Directory -Path $outputFolder -Force | Out-Null
+
+# Import CSV and select attendees
+$people = Import-Csv -Path $csvPath -Encoding UTF8
+$attendees = $people | Select-Object -First 1000       #Adjust the number of attendees as needed
+
+# Sample topics and notes
+$topics = @(
+    "Projektplanering och deadlines",
+    "Budgetuppföljning",
+    "Tekniska lösningar och utmaningar",
+    "Kundfeedback och förbättringsförslag",
+    "Resursfördelning",
+    "Marknadsföringsstrategi",
+    "Riskhantering",
+    "Teamets arbetsmiljö",
+    "Uppdatering av produktutveckling",
+    "Kommande workshops och utbildningar"
+)
+
+$notesSamples = @(
+    "Beslutades att skjuta upp deadline med två veckor.",
+    "Budgeten justerades för att inkludera extra resurser.",
+    "Tekniska problem med servern ska undersökas vidare.",
+    "Kundernas feedback visar behov av nya funktioner.",
+    "Resurser omfördelas för att stärka supportteamet.",
+    "Ny marknadsföringskampanj planeras starta i maj.",
+    "Riskanalys utförs för nya projektinitiativ.",
+    "Förbättringar i arbetsmiljön diskuteras.",
+    "Produktutvecklingen ligger i fas med tidsplanen.",
+    "Planering för utbildning i nya systemverktyg pågår."
+)
+
+function Get-RandomDateInPastMonth {
+    $startDate = (Get-Date).AddDays(-30)
+    $endDate = Get-Date
+    $randomTicks = Get-Random -Minimum $startDate.Ticks -Maximum $endDate.Ticks
+    return [datetime]::new($randomTicks)
+}
+
+# Generate 25 fake meeting minutes
+for ($i = 1; $i -le 500; $i++) {
+    $meetingDate = Get-RandomDateInPastMonth
+    $meetingDateStr = $meetingDate.ToString("yyyy-MM-dd HH:mm")
+
+    $leader = Get-Random $attendees
+    $attendeeCount = Get-Random -Minimum 3 -Maximum 7
+    $meetingAttendees = $attendees | Get-Random -Count $attendeeCount
+
+    $topic = Get-Random $topics
+    $notes = Get-Random $notesSamples
+
+    $content = @"
+Mötesprotokoll - $meetingDateStr
+
+Mötesledare: $($leader.Namn)
+Närvarande:
+"@
+
+    foreach ($person in $meetingAttendees) {
+        $content += "- $($person.Namn) ($($person.Mail))`r`n"
+    }
+
+    $content += @"
+
+Ämne:
+$topic
+
+Anteckningar:
+$notes
+
+-------------------------
+"@
+
+    $filename = "Mötesprotokoll_$($meetingDate.ToString('yyyyMMdd_HHmm'))_$i.txt"
+    $filepath = Join-Path $outputFolder $filename
+
+    $content | Out-File -FilePath $filepath -Encoding UTF8
+
+    Write-Host "✅ Skapade Mötesprotokoll: $filename"
+}

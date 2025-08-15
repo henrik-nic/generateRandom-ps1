@@ -1,0 +1,104 @@
+function Save-InvoiceAsPdf {
+    param (
+        [string]$Content,
+        [string]$PdfPath,
+        [object]$WordApp
+    )
+
+    $doc = $WordApp.Documents.Add()
+    $range = $doc.Range()
+    $range.Text = $Content
+
+    $doc.SaveAs([ref]$PdfPath, [ref]17)  # 17 = wdFormatPDF
+    $doc.Close($false)
+}
+
+# ==== CONFIGURATION ====
+$csvPath = "\path\to\your\customers.csv"  # Update with your actual CSV path
+$outputCsv = "\path\to\your\output\invoices.csv"  # Update with your actual output CSV path
+$outputFolder = "\path\to\your\output\invoices"  # Update with your actual output folder path
+$invoiceCount = 3000
+$employeesToUse = 1500
+$startInvoice = 1
+
+# ==== SETUP ====
+New-Item -ItemType Directory -Path $outputFolder -Force | Out-Null
+$customers = Import-Csv -Path $csvPath -Encoding UTF8 | Select-Object -First $employeesToUse
+$invoices = @()
+$wordApp = New-Object -ComObject Word.Application
+$wordApp.Visible = $false
+
+# ==== INVOICE TEMPLATE ====
+$invoiceTemplate = @"
+FAKTURA
+
+Företaget AB
+Org.nr: 556000-0000
+Fakturagatan 5
+123 45 Stockholm
+
+Fakturanummer: {InvoiceNumber}
+Datum: {InvoiceDate}
+
+Till:
+{CustomerName}
+Personnummer: {SSN}
+E-post: {Mail}
+
+Belopp att betala: {Amount} SEK
+
+Betalningsvillkor: 30 dagar netto
+Betalningssätt: Bankgiro 123-4567
+
+Tack för ert förtroende!
+
+__________________________
+Företaget AB
+"@
+
+# ==== GENERATE INVOICES + PDF ====
+for ($i = 0; $i -lt $invoiceCount; $i++) {
+    $cust = $customers[$i % $customers.Count]
+    $invoiceNumber = $startInvoice + $i
+    $amount = Get-Random -Minimum 1000 -Maximum 10000
+    $invoiceDate = (Get-Date).AddDays(- (Get-Random -Minimum 0 -Maximum 30)).ToString("yyyy-MM-dd")
+
+    # Create formatted content
+    $content = $invoiceTemplate `
+        -replace '{InvoiceNumber}', $invoiceNumber `
+        -replace '{InvoiceDate}', $invoiceDate `
+        -replace '{CustomerName}', $cust.Namn `
+        -replace '{SSN}', $cust.SSN `
+        -replace '{Mail}', $cust.Mail `
+        -replace '{Amount}', ('{0:N2}' -f $amount)
+
+    # Safe filename
+    $safeName = ($cust.Namn -replace '[\\\/:\*\?"<>\|]', '') -replace '\s+', '_'
+    $pdfFile = Join-Path $outputFolder ("Faktura_${invoiceNumber}_${safeName}.pdf")
+
+    # Save PDF
+    Save-InvoiceAsPdf -Content $content -PdfPath $pdfFile -WordApp $wordApp
+
+    # Collect invoice data
+    $invoices += [PSCustomObject]@{
+        InvoiceNumber = $invoiceNumber
+        Date          = $invoiceDate
+        Amount_SEK    = $amount
+        Namn          = $cust.Namn
+        SSN           = $cust.SSN
+        Mail         = $cust.Mail
+        PDFFile       = $pdfFile
+    }
+
+    Write-Host "✅ Saved invoice PDF: Faktura_${invoiceNumber}_${safeName}.pdf"
+}
+
+# ==== EXPORT TO CSV ====
+$invoices | Export-Csv -Path $outputCsv -NoTypeInformation -Encoding UTF8
+Write-Host "`n🧾 All $invoiceCount invoices saved to: $outputCsv"
+
+# ==== CLEANUP ====
+$wordApp.Quit()
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($wordApp) | Out-Null
+[GC]::Collect()
+[GC]::WaitForPendingFinalizers()

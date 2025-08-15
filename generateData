@@ -1,0 +1,108 @@
+function Convert-SwedishCharacters {
+    param (
+        [string]$Text
+    )
+    return $Text -replace '[åäÅÄ]', 'a' -replace '[öÖ]', 'o'
+}
+
+function Get-FakePerson {
+    $faker = @{
+        FirstName = @("Anna", "Erik", "Maria", "Lars", "Sara", "Johan", "Karin", "Oskar", "Emma", "Nils", "Elin", "Fredrik", "Linda", "Mikael", "Sofia", "Andreas", 
+                      "Elisabeth", "Patrik", "Hanna", "Jonas", "Emil", "Julia", "David", "Ida", "Simon", "Malin", "Alexander", "Cecilia", "Daniel", "Frida", "Mathias", 
+                      "Oscar", "Linnea", "Anton", "Rebecca", "Filip", "Tove", "Sebastian", "Johanna", "Victor", "Maja", "Sofie", "Axel", "Alva", "Benjamin", "Astrid", "Hugo",
+                      "Elvira", "Leo", "Saga", "Wilma", "Noah", "Liv", "Elias", "Selma", "Viktor", "Albin", "Nora", "Max", "Tyra", "Isak", "Signe", "Ellen", "Hedda", "Liam", 
+                      "Molly", "Theo", "Elsa", "Charlie", "Stella", "Arvid", "Tilda", "Gustav", "Filippa", "Alfred", "Mira", "Edvin", "Siri", "Leon", "Lina", "Sigge", "Elinor", 
+                      "Wilhelm", "Nellie", "Ebba", "Olle", "Vera", "Hjalmar", "Rasmus", "Klara", "Algot", "Mina", "Sune", "Lova", "Alfons", "Sigurd", "Folke", "Hedvig", 
+                      "Edgar", "Sigvard", "Rune", "Håkan", "Bengt", "Gunnar", "Stig", "Kjell", "Rolf", "Ulf", "Bo", "Åke", "Sven", "Gösta", "Folke", "Nils-Erik", "Jan-Olof", "Per-Ola", "Lennart")
+        LastName  = @("Svensson", "Johansson", "Karlsson", "Nilsson", "Andersson", "Larsson", "Olsson", "Persson", "Eriksson", "Pettersson", "Jansson", "Bergström", 
+                      "Lindqvist", "Gustafsson", "Lundqvist", "Nyström", "Strömberg", "Sandberg", "Axelsson", "Berglund", "Hansson", "Söderberg", "Lindström", "Johansdotter", 
+                      "Karlsson", "Nilsson", "Andersdotter", "Larssondotter", "Olssondotter", "Perssondotter", "Erikssondotter", "Petterssondotter", "Jansdotter", 
+                      "Bergströmdotter", "Lindqvistdotter", "Gustafssondotter", "Lundqvistdotter", "Sandbergdotter", "Johanssonsson", "Karlssons", "Nilssons", "Anderssson",
+                      "Larssons", "Olssons", "Perssons", "Erikssons", "Petterssons", "Janssons", "Bergströms", "Lindqvists", "Gustafssons", "Lundqvists",
+                      "Nyströms", "Strömbergs", "Sandbergs", "Axelssons", "Berglunds", "Hanssons", "Söderbergs", "Lindströms", "Johansdotters")
+
+        City      = @("Stockholm", "Göteborg", "Malmö", "Uppsala", "Örebro", "Lund", "Linköping", "Helsingborg", "Jönköping", "Umeå", "Gävle", "Borås", "Karlstad",
+                      "Västerås", "Sundsvall", "Norrköping", "Halmstad", "Eskilstuna", "Luleå", "Trollhättan", "Kalmar", "Karlskrona", "Kristianstad", "Skövde",
+                      "Falun", "Östersund", "Visby", "Växjö", "Borlänge", "Alingsås", "Mölndal", "Kungsbacka", "Varberg", "Lidingö", "Täby", "Sollentuna",
+                      "Sigtuna", "Upplands Väsby", "Nacka", "Värmdö", "Botkyrka", "Huddinge", "Haninge", "Sundbyberg", "Solna", "Danderyd", "Nynäshamn", "Vallentuna", "Österåker",
+                      "Tyresö", "Täby", "Värmdö", "Sigtuna", "Upplands Väsby", "Nacka", "Botkyrka", "Huddinge", "Haninge", "Sundbyberg", "Solna", "Danderyd", "Nynäshamn", "Vallentuna", "Österåker",
+                      "Tyresö", "Sigtuna", "Upplands")
+
+        Street    = @("Storgatan", "Kungsgatan", "Västra vägen", "Östra vägen", "Bergsgatan", "Skolgatan", "Hamngatan", "Kyrkogatan", "Stationsgatan", "Södra vägen",
+                      "Norra vägen", "Torggatan", "Parkgatan", "Industrigatan", "Fabriksgatan", "Skogsvägen", "Ängsgatan", "Hagagatan", "Lillgatan", "Stenvägen", "Granvägen",
+                      "Tallgatan", "Björnvägen", "Rönnvägen", "Ekvägen", "Aspvägen", "Björkgatan", "Kastanjegatan", "Almgatan", "Lindgatan", "Cedervägen", "Plommonvägen", "Äppelvägen",
+                      "Pärongatan", "Vinbärsgatan", "Hallongatan", "Blåbärsgatan", "Lingongatan", "Smultrongatan", "Krusbärsgatan", "Havregatan", "Vetevägen", "Rågvägen", "Kornvägen", "Havrevägen")
+    }
+
+    $first = Get-Random $faker.FirstName
+    $last  = Get-Random $faker.LastName
+
+    $firstEmail = Convert-SwedishCharacters $first
+    $lastEmail  = Convert-SwedishCharacters $last
+
+    $ssn = -join (
+        (Get-Random -Minimum 1960 -Maximum 2000).ToString(),
+        (Get-Random -Minimum 1 -Maximum 12).ToString("00"),
+        (Get-Random -Minimum 1 -Maximum 28).ToString("00"), "-",
+        (Get-Random -Minimum 1000 -Maximum 9999)
+    )
+
+    $ip = -join (
+        (Get-Random -Minimum 1 -Maximum 255), ".",
+        (Get-Random -Minimum 0 -Maximum 255), ".",
+        (Get-Random -Minimum 0 -Maximum 255), ".",
+        (Get-Random -Minimum 1 -Maximum 255)
+    )
+
+    $iban = "SE" + (Get-Random -Minimum 10 -Maximum 99).ToString() + " " +
+            ((1..5) | ForEach-Object { (Get-Random -Minimum 1000 -Maximum 9999).ToString() }) -join " "
+
+    $serviceId = Get-Random -Minimum 1000 -Maximum 9999
+
+    $streetName     = Get-Random $faker.Street
+    $streetNumber   = Get-Random -Minimum 1 -Maximum 99
+    $city           = Get-Random $faker.City
+    $randomMail     = -join ((48..57) + (97..122) | Get-Random -Count 5 | ForEach-Object { [char]$_ })
+
+    return [PSCustomObject]@{
+        GUID         = [guid]::NewGuid().ToString()
+        Namn         = "$first $last"
+        StreetName   = $streetName
+        StreetNumber = $streetNumber
+        Stad         = $city
+        Postnummer   = (Get-Random -Minimum 10000 -Maximum 99999).ToString()
+        SSN          = $ssn
+        Telefon      = "07$(Get-Random -Minimum 0 -Maximum 9)$(Get-Random -Minimum 1000000 -Maximum 9999999)"
+        Mail         = ("$firstEmail.$lastEmail@$randomMail.example.com").ToLower()
+        IP           = $ip
+        IBAN         = $iban
+        ServiceID    = $serviceId
+    }
+}
+
+function Export-PersonData {
+    param (
+        [array]$People,
+        [string]$OutputPath
+    )
+
+    $base = [System.IO.Path]::GetFileNameWithoutExtension($OutputPath)
+
+    $People | Export-Csv "$base.csv" -NoTypeInformation -Encoding UTF8
+    $People | ConvertTo-Json | Out-File "$base.json" -Encoding UTF8
+
+    Write-Host "✅ Exported CSV and JSON to $base.*"
+}
+
+# ----------- MAIN -----------
+
+$fakeData = @()
+1..5431 | ForEach-Object { $fakeData += Get-FakePerson }
+
+$outputBase = "C:\Users\HenrikJansson\C Nord-ic nic-demo.com\FakeData.csv"
+Export-PersonData -People $fakeData -OutputPath $outputBase
+
+# Optional: Remove or define Export-PDF if needed
+# Export-PDF -People $fakeData -OutputPath $outputBase
+
+Write-Host "`n🎉 All exports completed to $outputBase.*"

@@ -1,0 +1,35 @@
+# ------------------------------------------
+# 📂 File paths
+# ------------------------------------------
+
+$sourceCsv = "\path\to\your\source\file.csv"  # Update this path to your source CSV file
+$outputCsv = "\path\to\your\output\file.csv"  # Update this path to your desired output CSV file
+
+# ------------------------------------------
+# 📥 Load existing data
+# ------------------------------------------
+
+if (!(Test-Path $sourceCsv)) {
+    Write-Error "❌ Source file not found: $sourceCsv"
+    exit
+}
+
+$people = Import-Csv -Path $sourceCsv
+
+# ------------------------------------------
+# 📤 Extract desired fields
+# ------------------------------------------
+
+$accounts = foreach ($person in $people) {
+    [PSCustomObject]@{
+        IP   = $person.IP
+        Guid = $person.Guid
+    }
+}
+
+# ------------------------------------------
+# 💾 Save to CSV
+# ------------------------------------------
+
+$accounts | Export-Csv -Path $outputCsv -NoTypeInformation -Encoding UTF8
+Write-Host "`n✅ File saved to: $outputCsv"

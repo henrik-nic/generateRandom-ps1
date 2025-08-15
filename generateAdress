@@ -1,0 +1,38 @@
+# ------------------------------------------
+# 📂 File paths
+# ------------------------------------------
+
+$sourceCsv = "\path\to\your\source\file.csv"  # Update this path to your source CSV file
+$outputCsv = "\Path\to\your\output\adress.csv"  # Update this path to your output CSV file
+
+# ------------------------------------------
+# 📥 Load existing data
+# ------------------------------------------
+
+if (!(Test-Path $sourceCsv)) {
+    Write-Error "❌ Source file not found: $sourceCsv"
+    exit
+}
+
+$people = Import-Csv -Path $sourceCsv
+
+# ------------------------------------------
+# 🧾 Extract SSN and Address
+# ------------------------------------------
+
+$adresses = foreach ($person in $people) {
+    [PSCustomObject]@{
+        SSN         = $person.SSN
+        Adress      = $person.StreetName
+        Gatunummer  = $person.StreetNumber
+        Stad        = $person.Stad
+        postnummer  = $person.postnummer
+    }
+}
+
+# ------------------------------------------
+# 💾 Save to adress.csv
+# ------------------------------------------
+
+$adresses | Export-Csv -Path $outputCsv -NoTypeInformation -Encoding UTF8
+Write-Host "`n✅ Address list saved to: $outputCsv"

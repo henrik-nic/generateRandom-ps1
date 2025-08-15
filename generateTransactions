@@ -1,0 +1,43 @@
+# ------------------------------------------
+# 📂 File paths
+# ------------------------------------------
+#Make sure to CHANGE the paths to your own
+
+$sourceCsv = "\path\to\your\source\people.csv"
+$outputCsv = "\path\to\your\output\accounts.csv"
+
+# ------------------------------------------
+# 📥 Load existing data
+# ------------------------------------------
+
+if (!(Test-Path $sourceCsv)) {
+    Write-Error "❌ Source file not found: $sourceCsv"
+    exit
+}
+
+$people = Import-Csv -Path $sourceCsv
+
+# ------------------------------------------
+# 🧾 Generate transactions
+# ------------------------------------------
+
+$transactions = foreach ($person in $people) {
+    
+    # Generate a random date within the past 30 days
+    $daysBack = Get-Random -Minimum 0 -Maximum 30
+    $randomDate = (Get-Date).AddDays(-$daysBack).ToString("yyyy-MM-ddTHH:mm:ss")
+
+    [PSCustomObject]@{
+        Guid      = $person.Guid
+        Date      = $randomDate
+        IBAN      = $person.IBAN
+        ServiceID = $person.ServiceID
+    }
+}
+
+# ------------------------------------------
+# 💾 Save output
+# ------------------------------------------
+
+$transactions | Export-Csv -Path $outputCsv -NoTypeInformation -Encoding UTF8
+Write-Host "`n✅ Transactions saved to: $outputCsv"

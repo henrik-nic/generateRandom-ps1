@@ -1,0 +1,38 @@
+# Configuration
+$csvPath = "\path\to\your\accounts.csv"
+$outputPath = "\path\to\your\output\folder\accounts.sql"
+$tableName = "accounts"
+
+# Read CSV
+$csvData = Import-Csv -Path $csvPath
+
+# Open SQL file for writing
+$sqlStatements = @()
+
+foreach ($row in $csvData) {
+    $columns = @()
+    $values = @()
+
+    foreach ($col in $row.PSObject.Properties) {
+        $columns += $col.Name
+
+        if ([string]::IsNullOrWhiteSpace($col.Value)) {
+            $values += "NULL"
+        } else {
+            # Escape single quotes by doubling them
+            $escapedValue = $col.Value -replace "'", "''"
+            $values += "'$escapedValue'"
+        }
+    }
+
+    $columnsJoined = ($columns -join ", ")
+    $valuesJoined = ($values -join ", ")
+
+    $insert = "INSERT INTO $tableName ($columnsJoined) VALUES ($valuesJoined);"
+    $sqlStatements += $insert
+}
+
+# Write to output file
+$sqlStatements | Out-File -Encoding UTF8 -FilePath $outputPath
+
+Write-Host "SQL file created at: $outputPath"

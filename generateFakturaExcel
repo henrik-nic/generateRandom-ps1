@@ -1,0 +1,65 @@
+# ==== CONFIGURATION ====
+$csvPath = "\path\to\your\customers.csv"  # Path to the CSV file with customer data
+$outputExcel = "\path\to\output\invoices.xlsx"  # Path to save the generated Excel file
+$invoiceCount = 2000
+$employeesToUse = 1500
+$startInvoice = 4000
+
+# ==== SETUP ====
+$customers = Import-Csv -Path $csvPath -Encoding UTF8 | Select-Object -First $employeesToUse
+$invoices = @()
+
+# ==== GENERATE INVOICES (NO PDF) ====
+for ($i = 0; $i -lt $invoiceCount; $i++) {
+    $cust = $customers[$i % $customers.Count]
+    $invoiceNumber = $startInvoice + $i
+    $amount = Get-Random -Minimum 1000 -Maximum 10000
+    $invoiceDate = (Get-Date).AddDays(- (Get-Random -Minimum 0 -Maximum 30)).ToString("yyyy-MM-dd")
+
+    # Collect invoice data
+    $invoices += [PSCustomObject]@{
+        InvoiceNumber = $invoiceNumber
+        Date          = $invoiceDate
+        Amount_SEK    = $amount
+        Namn          = $cust.Namn
+        SSN           = $cust.SSN
+        Mail         = $cust.Mail
+    }
+
+    Write-Host "✅ Generated invoice: $invoiceNumber for $($cust.Namn)"
+}
+
+# ==== EXPORT TO EXCEL ONLY ====
+$excel = New-Object -ComObject Excel.Application
+$excel.Visible = $false
+$workbook = $excel.Workbooks.Add()
+$sheet = $workbook.Worksheets.Item(1)
+
+# Write headers
+$headers = @("InvoiceNumber", "Date", "Amount_SEK", "Namn", "SSN", "Mail")
+for ($i = 0; $i -lt $headers.Count; $i++) {
+    $sheet.Cells.Item(1, $i + 1).Value2 = $headers[$i]
+}
+
+# Write data rows
+$row = 2
+foreach ($inv in $invoices) {
+    $sheet.Cells.Item($row, 1).Value2 = $inv.InvoiceNumber.ToString()
+    $sheet.Cells.Item($row, 2).Value2 = $inv.Date
+    $sheet.Cells.Item($row, 3).Value2 = "{0:N2}" -f $inv.Amount_SEK
+    $sheet.Cells.Item($row, 4).Value2 = $inv.Namn
+    $sheet.Cells.Item($row, 5).Value2 = $inv.SSN
+    $sheet.Cells.Item($row, 6).Value2 = $inv.Mail
+    $row++
+}
+
+# Save and cleanup
+$workbook.SaveAs($outputExcel)
+$workbook.Close()
+$excel.Quit()
+
+[System.Runtime.InteropServices.Marshal]::ReleaseComObject($sheet) | Out-Null
+[System.Runtime.InteropServices.Marshal]::ReleaseComObject($workbook) | Out-Null
+[System.Runtime.InteropServices.Marshal]::ReleaseComObject($excel) | Out-Null
+
+Write-Host "`n📊 All $invoiceCount invoices exported to Excel: $outputExcel"

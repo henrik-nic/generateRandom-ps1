@@ -1,0 +1,97 @@
+function Save-ContractAsPdf {
+    param (
+        [string]$Content,
+        [string]$PdfPath,
+        [object]$WordApp
+    )
+
+    $doc = $WordApp.Documents.Add()
+    $range = $doc.Range()
+    $range.Text = $Content
+
+    $doc.SaveAs([ref]$PdfPath, [ref]17)  # 17 = wdFormatPDF
+    $doc.Close($false)
+}
+
+# CSV file path
+$csvPath = "Path\to\your\source\"
+
+# Output folder for PDFs
+$outputFolder = "Path\to\your\source\"
+New-Item -ItemType Directory -Path $outputFolder -Force | Out-Null
+
+# Import CSV
+$employees = Import-Csv -Path $csvPath -Encoding UTF8 | Select-Object -Last 1469
+
+# Contract template
+$contractTemplate = @"
+ANSTÄLLNINGSAVTAL
+Mellan:
+Företaget AB
+Org.nr: 556000-0000
+Adress: Företagsgatan 1, 111 22 Stockholm
+
+Namn: {Name}
+Personnummer: {SSN}
+Telefon: {Phone}
+Gatuadress: {StreetName} {StreetNumber}
+Postnummer: {Postnummer}
+Mail: {Mail}
+
+Anställningsnummer: {EmployeeID}
+Anställningsform: Tillsvidareanställning
+Tillträdesdag: {StartDate}
+Lön: 32 000 SEK/månad
+Arbetsort: {City}
+Arbetstid: Heltid (40h/vecka)
+
+Ort och datum: Stockholm, {ContractDate}
+
+__________________________
+Företaget AB
+
+__________________________
+{Name}
+"@
+
+# Start Word once
+$wordApp = New-Object -ComObject Word.Application
+$wordApp.Visible = $false
+
+# Counter for generating anställningsnummer
+$counter = 1
+
+foreach ($emp in $employees) {
+    $anstallningsnummer = $counter
+    $counter++
+
+    $city = ($emp.Adress -split '\s+')[-1]
+
+    $contract = $contractTemplate `
+        -replace '{Name}', $emp.Namn `
+        -replace '{SSN}', $emp.SSN `
+        -replace '{Phone}', $emp.Telefon `
+        -replace '{StreetName}', $emp.StreetName `
+        -replace '{StreetNumber}', $emp.StreetNumber `
+        -replace '{Postnummer}', $emp.Postnummer `
+        -replace '{Mail}', $emp.Mail `
+        -replace '{EmployeeID}', $anstallningsnummer `
+        -replace '{StartDate}', (Get-Date).AddDays((get-random -Minimum -1000 -Maximum 180)  ).ToString("yyyy-MM-dd") `
+        -replace '{ContractDate}', (Get-Date -Format "yyyy-MM-dd") `
+        -replace '{City}', $city
+
+    # Clean filename
+    $safeName = ($emp.Namn -replace '[\\\/:\*\?"<>\|]', '') -replace '\s+', '_'
+
+    # Paths for PDF and TXT
+    $pdfPath = Join-Path $outputFolder ("Anstallningsavtal_${safeName}_$anstallningsnummer.pdf")
+    $txtPath = Join-Path $outputFolder ("Anstallningsavtal_${safeName}_$anstallningsnummer.txt")
+
+    # Save as PDF
+    Save-ContractAsPdf -Content $contract -PdfPath $pdfPath -WordApp $wordApp
+
+    # Save as TXT
+    $contract | Out-File -FilePath $txtPath -Encoding UTF8
+
+    Write-Host "✅ Skapade PDF & TXT för $($emp.Namn) – anställningsnummer: $anstallningsnummer"
+}

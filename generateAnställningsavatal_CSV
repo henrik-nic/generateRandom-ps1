@@ -1,0 +1,52 @@
+# CSV file path (input)
+$csvPath = "Path\to\your\source\employees.csv"
+
+# CSV output path
+$outputCsvPath = "Path\to\your\output\anstallningsavtal.csv"
+
+# Import source CSV (take last or first X employees)
+$employees = Import-Csv -Path $csvPath -Encoding UTF8 #| Select-Object -First 3
+
+# Initialize result array
+$outputData = @()
+
+# Counter for generating anställningsnummer
+$counter = 1
+
+foreach ($emp in $employees) {
+    $anstallningsnummer = $counter
+    $counter++
+
+    $city = ($emp.Adress -split '\s+')[-1]
+
+    # Random start date (never in the future)
+    $startDate = (Get-Date).AddDays((Get-Random -Minimum -1000 -Maximum 0)).ToString("yyyy-MM-dd")
+
+    $contractDate = (Get-Date -Format "yyyy-MM-dd")
+
+    # Use fixed bruttolön
+    $bruttolon = 32000
+
+    # Build object
+    $outputData += [PSCustomObject]@{
+        Namn                = $emp.Namn
+        Personnummer        = $emp.SSN
+        Telefon             = $emp.Telefon
+        Gatuadress          = "$($emp.StreetName) $($emp.StreetNumber)"
+        Postnummer          = $emp.Postnummer
+        Mail                = $emp.Mail
+        Anstallningsnummer  = $anstallningsnummer
+        Startdatum          = $startDate
+        Lön_SEK_per_månad   = $bruttolon
+        Arbetsort           = $city
+        Arbetstid           = "Heltid (40h/vecka)"
+        Kontraktsdatum      = $contractDate
+    }
+
+    Write-Host "✅ Lägger till $($emp.Namn) – anställningsnummer: $anstallningsnummer"
+}
+
+# Export result to CSV
+$outputData | Export-Csv -Path $outputCsvPath -Encoding UTF8 -NoTypeInformation
+
+Write-Host "✅ CSV-fil sparad till: $outputCsvPath"

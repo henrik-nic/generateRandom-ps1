@@ -1,0 +1,56 @@
+# ==== Configuration ====
+
+# Folder where .py files will be saved
+$outputFolder = "\path\to\your\output\folder"
+New-Item -ItemType Directory -Path $outputFolder -Force | Out-Null
+
+# Number of Python files to generate
+$fileCount = 100
+
+# Optional: List of example functions to include randomly
+$functionSnippets = @(
+@"
+def greet(name):
+    print(f'Hello, {name}!')
+"@,
+@"
+def add(a, b):
+    return a + b
+"@,
+@"
+def is_even(n):
+    return n % 2 == 0
+"@,
+@"
+def factorial(n):
+    if n == 0: return 1
+    return n * factorial(n - 1)
+"@,
+@"
+def reverse_string(s):
+    return s[::-1]
+"@
+)
+
+# ==== Generate Files ====
+for ($i = 1; $i -le $fileCount; $i++) {
+    $filename = "script_$i.py"
+    $filepath = Join-Path $outputFolder $filename
+
+    $chosenFunction = Get-Random -InputObject $functionSnippets
+    $scriptContent = @"
+# Auto-generated Python script $i
+
+$chosenFunction
+
+if __name__ == '__main__':
+    print("Running script $i...")
+"@
+
+    # Save to file
+    $scriptContent | Out-File -FilePath $filepath -Encoding UTF8
+
+    Write-Host "✅ Generated: $filename"
+}
+
+Write-Host "`n🎉 $fileCount Python scripts generated in: $outputFolder"

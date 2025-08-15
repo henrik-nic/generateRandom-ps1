@@ -1,0 +1,60 @@
+# Paths
+$csvPath = "\path\to\sellers.csv"  # Update this path to your sellers CSV file
+$outputFolder = "\path\to\output\offers"  # Update this path to your desired output folder
+New-Item -ItemType Directory -Path $outputFolder -Force | Out-Null
+
+# Load sellers data
+# Note: Adjust the path to your actual CSV file containing seller data
+$sellers = Import-Csv -Path $csvPath -Encoding UTF8 | Select-Object -Last 3561 
+
+# Company name generation
+$prefixes = @("Nordic", "Tech", "Svenska", "Global", "Bright", "Future", "Prime", "Blue", "Green", "Silver", "Digital", "NextGen")
+$words = @("Enterprises", "Solutions", "Group", "Partners", "Dynamics", "Networks", "Technologies")
+$suffixes = @("AB", "HB", "KB", "Ekonomisk Förening")
+
+function Get-RandomCompany {
+    "{0} {1} {2}" -f (Get-Random $prefixes), (Get-Random $words), (Get-Random $suffixes)
+}
+
+# Service catalog
+$services = @(
+    [PSCustomObject]@{Name="Systemintegration"; Price=7500},
+    [PSCustomObject]@{Name="Molntjänster"; Price=9000},
+    [PSCustomObject]@{Name="UX-design"; Price=6800},
+    [PSCustomObject]@{Name="Backend-utveckling"; Price=8200},
+    [PSCustomObject]@{Name="IT-konsulttjänst"; Price=7600},
+    [PSCustomObject]@{Name="Säkerhetsanalys"; Price=9900},
+    [PSCustomObject]@{Name="Driftövervakning"; Price=5600}
+)
+
+# Generate X antal offers
+for ($i = 1; $i -le 800; $i++) {
+    $seller = Get-Random $sellers
+    $customer = Get-RandomCompany
+    $offerId = ([guid]::NewGuid().ToString().Substring(0, 8)).ToUpper()
+    $date = Get-Date -Format "yyyy-MM-dd"
+    $customerSafe = ($customer -replace '[\\\/:\*\?"<>\|]', '') -replace '\s+', '_'
+
+    # Pick 3 random services
+    $selected = $services | Get-Random -Count 3
+
+    # Calculate total price
+    $totalPrice = ($selected | Measure-Object -Property Price -Sum).Sum
+
+    # Build JSON object
+    $offer = [PSCustomObject]@{
+        OffertNr     = $offerId
+        Datum        = $date
+        KundFöretag  = $customer
+        Säljare      = $seller.Namn
+        Epost        = $seller.Mail
+        Tjänster     = $selected
+        TotalPris_SEK = $totalPrice
+    }
+
+    $json = $offer | ConvertTo-Json -Depth 4 -Compress
+    $jsonFilePath = Join-Path $outputFolder "Offert_${customerSafe}_${offerId}.json"
+    $json | Out-File -FilePath $jsonFilePath -Encoding UTF8
+
+    Write-Host "💾 [$i/50] Offert sparad som: $jsonFilePath"
+}

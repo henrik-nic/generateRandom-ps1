@@ -1,0 +1,101 @@
+function Save-ContractAsWord {
+    param (
+        [string]$Content,
+        [string]$DocxPath,
+        [object]$WordApp
+    )
+
+    $doc = $WordApp.Documents.Add()
+    $range = $doc.Range()
+    $range.Text = $Content
+    $doc.SaveAs($DocxPath, 16)  # 16 = Word .docx
+    $doc.Close($false)
+}
+
+$csvPath = "path\to\your\employees.csv"  # Update this path to your CSV file
+$outputFolder = "\path\to\output\folder"  # Update this path to your desired output folder
+New-Item -ItemType Directory -Path $outputFolder -Force | Out-Null
+$employees = Import-Csv -Path $csvPath -Encoding UTF8
+$wordApp = New-Object -ComObject Word.Application
+$wordApp.Visible = $false
+
+$openings = @(
+    "Jag är mycket intresserad av tjänsten som {JobTitle} hos {Company}.",
+    "Jag vill gärna ansöka om rollen som {JobTitle} på {Company}.",
+    "Med stor entusiasm söker jag möjligheten att bidra som {JobTitle} på {Company}.",
+    "Jag är imponerad av {Company} och tror att jag skulle passa bra som {JobTitle}.", "Jag har följt {Company} under en tid och är imponerad av ert arbete.", "Jag är övertygad om att min bakgrund och mina färdigheter skulle passa väl in i ert team.",
+    "Det vore en ära att få arbeta som {JobTitle} på {Company}."
+    
+)
+$middles = @(
+    "Jag har flera års erfarenhet inom IT-branschen och är van vid att arbeta i team.",
+    "Min erfarenhet av {SkillSet} har gett mig en stark grund för att lyckas i denna roll.", "Jag har en passion för teknik och innovation, vilket jag tror skulle vara värdefullt för {Company}.",
+    "Jag har arbetat med {SkillSet} i flera år och har en djup",
+    "Jag har arbetat med olika projekt som krävt både teknisk kompetens och kreativ problemlösning.",
+    "Min bakgrund inom {SkillSet} gör mig väl rustad för denna roll.",
+    "Jag är en engagerad och lösningsorienterad person som trivs med utmaningar."
+    
+)
+$closings = @(
+    "Jag ser fram emot möjligheten att få diskutera hur jag kan bidra till ert team. ",
+    "Jag är övertygad om att min erfarenhet och mina färdigheter skulle passa väl in i ert företag.",
+    "Tack för att ni överväger min ansökan. Jag ser fram emot att höra från er.", "Jag är entusiastisk över möjligheten att få arbeta med er och bidra till {Company}.",
+    "Jag är tillgänglig för en intervju när det passar er och ser fram emot att diskutera min ansökan vidare.",
+    "Jag är övertygad om att jag kan tillföra värde till {Company} och ser fram emot att höra från er.",
+    "Jag hoppas få möjlighet att presentera mig närmare vid en intervju."
+)
+$jobTitles = @("systemutvecklare", "IT-konsult", "projektledare", "databasadministratör", "UX-designer")
+$companies = @("Techify AB", "Nexa Solutions", "CloudNine AB", "Inova IT", "Digitalisera Sverige")
+$skillSets = @("C#, .NET och Azure", "agila metoder och DevOps", "projektledning och systemdesign", "databashantering och SQL", "UX-design och användarupplevelse")
+$futureSkills = @("AI och maskininlärning", "blockchain-teknologier", "cybersäkerhet", "molnbaserade lösningar", "dataanalys och big data", "IoT och smarta enheter")
+
+function New-PersonligtBrev {
+    param($person)
+
+    $jobTitle = Get-Random -InputObject $jobTitles
+    $company = Get-Random -InputObject $companies
+    $skillSet = Get-Random -InputObject $skillSets
+    $futureSkills = Get-Random -InputObject $futureSkills
+
+    $opening = ($openings | Get-Random) -replace '{JobTitle}', $jobTitle -replace '{Company}', $company
+    $middle = ($middles | Get-Random) -replace '{SkillSet}', $skillSet
+    $closing = ($closings | Get-Random)
+
+    return @"
+Personligt Brev – $($person.Namn)
+
+Hej,
+
+$opening
+
+$middle
+
+$closing
+
+Med vänliga hälsningar,
+$($person.Namn)
+Telefon: $($person.Telefon)
+Email: $($person.Mail)
+"@
+}
+
+foreach ($emp in $employees) {
+    $letter = New-PersonligtBrev -person $emp
+    $safeName = ($emp.Namn -replace '[\\\/:\*\?"<>\|]', '') -replace '\s+', '_'
+
+    # Paths
+    $docxPath = Join-Path $outputFolder ("PersonligtBrev_${safeName}.docx")
+    $txtPath = Join-Path $outputFolder ("PersonligtBrev_${safeName}.txt")
+
+    # Save as Word
+    Save-ContractAsWord -Content $letter -DocxPath $docxPath -WordApp $wordApp
+
+    # Save as .txt
+    $letter | Out-File -FilePath $txtPath -Encoding UTF8
+
+    Write-Host "✅ Skapade Word- och text-dokument för $($emp.Namn)"
+}
+
+
+$wordApp.Quit()
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($wordApp) | Out-Null
